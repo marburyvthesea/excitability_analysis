@@ -1,7 +1,6 @@
 import sys
 sys.path.append('/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/')
-sys.path.append('/Library/Python/2.7/site-packages/')
-sys.path.append('/Users/johnmarshall/miniconda3/envs/py27/lib/python2.7/site-packages')
+sys.path.append('/Library/Python/2.7/site-packages/');
 sys.path.append('/Applications/MacPorts/dv_dt_V_analysis/')
 sys.path.append('/Applications/MacPorts/stimfit.app/Contents/Frameworks/stimfit/')
 import stf
@@ -12,28 +11,6 @@ import pandas as pd
 import xlsxwriter
 import stf
 import spells
-
-class excitability_file(object):
-	##compile file with excitability traces
-	def __init__(self):
-		self.size_channel = stf.get_size_channel()
-		self.name = stf.get_filename()
-	# make this do a dv_dt_by_V	
-	def compile_sweeps(self):
-		sweeps_dict = {}
-		for sweep in range(self.size_channel):
-			stf.set_trace(sweep)
-			trace = excitability_trace(stf.get_trace(), sweep)
-			sweeps_dict[sweep] = trace.calc_dv_x_dt()
-
-		return(sweeps_dict)
-
-	def output_dict(self, dictionary_with_sweeps):
-		dict_df = pd.DataFrame(dictionary_with_sweeps) 
-		dict_df.to_excel(str(self.name)+'.xlsx')
-
-		return()
-
 
 class excitability_trace(object):
 	##class to for information for traces in excitability experiment
@@ -55,8 +32,7 @@ class excitability_trace(object):
 				input = dv_dt_out
 				count += 1
 		return(dv_dt_out)
-	##add a get dv_dt_as_numpy here
-
+	
 	def plot_dv_dt_by_V(self):
 		dv_dt_for_plot = self.calc_dv_x_dt()
 		V_values =  stf.get_trace(self.sweep_number)[:-1]
@@ -85,7 +61,8 @@ class excitability_trace(object):
 		fit_dict = stf.leastsq(1)
 		##{'SSE': 0.8533321749496918, 'Tau_0': 1.1497377662822952, 'Amp_0': 904.9731610575948, 'Offset': -275.5736999511719}
 		V_amplitude = fit_dict['Amp_0']
-		return(V_amplitude)
+		tau = fit_dict['Tau_0']
+		return(V_amplitude, tau)
 		
 	
 def compile_file():
@@ -211,12 +188,15 @@ def calc_R_input(current_start, current_delta, *argv):
 	and it went up by 50pA each sweep"""
 	hyperpolarizing_sweeps = {}
 	fit_voltage_amplitudes = []
+	fit_taus = []
 	measured_voltage_amplitudes = []
 	sweeps = [sweep for sweep in argv]
 	injected_current = [(current_start+(current_delta*x)) for x in range(len(argv))]
 	for sweep in argv:
 		hyperpolarizing_sweeps[sweep] = excitability_trace(stf.get_trace(sweep), sweep)
-		fit_voltage_amplitudes.append(hyperpolarizing_sweeps[sweep].fit_mono_exponential())
+		[v_amp, tau] = hyperpolarizing_sweeps[sweep].fit_mono_exponential()
+		fit_voltage_amplitudes.append(v_amp)
+		fit_taus.append(tau)
 		stf.set_trace(sweep)
 		measured_voltage_amplitudes.append(np.mean(stf.get_trace()[stf.get_peak_start():stf.get_peak_end()])-stf.get_base())
 	
@@ -225,9 +205,14 @@ def calc_R_input(current_start, current_delta, *argv):
 	R_input_fit = [abs(V/I) for V, I in zip(fit_voltage_amplitudes, injected_current)]
 	R_input_measured = [abs(V/I) for V, I in zip(measured_voltage_amplitudes, injected_current)]
 		
-	to_output = np.array([sweeps, fit_voltage_amplitudes, measured_voltage_amplitudes, injected_current, R_input_fit, R_input_measured])
+	##also measures tau to get membrane capacitance
+	# tau = Rinput*Cmembrane, Cmembrane = tau / Rinput
+	C_membrane_fit = [(memb_tau/R_in) for memb_tau, R_in, in zip(fit_taus, R_input_fit)]
+	C_membrane_measured = [(memb_tau/R_in) for memb_tau, R_in, in zip(fit_taus, R_input_measured)]
 	
-	df_to_output = pd.DataFrame(np.transpose(to_output), columns = ['sweeps', 'SS amplitude (mV) fit', 'SS amplitude (mV) measured', 'injected current', 'Rinput from fit', 'Rinput from measured values'])
+	to_output = np.array([sweeps, fit_voltage_amplitudes, measured_voltage_amplitudes, injected_current, R_input_fit, R_input_measured, C_membrane_fit, C_membrane_measured])
+	
+	df_to_output = pd.DataFrame(np.transpose(to_output), columns = ['sweeps', 'SS amplitude (mV) fit', 'SS amplitude (mV) measured', 'injected current', 'Rinput from fit', 'Rinput from measured values', 'Cmembrane from fit', 'C_membrane_measured'])
 	output_path = stf.get_filename()[:-4] + 'Rinput.xlsx'
 	df_to_output.to_excel(output_path, sheet_name='Rinput')	
 	return(True)
