@@ -41,16 +41,18 @@ class excitability_trace(object):
 		self.voltage_trace = voltage_trace
 		self.sweep_number = sweep_number 
 		
-	def calc_dv_x_dt(self, *argv):
+	def calc_dv_x_dt(self, deriv_type=1):
+		###redo this function as calc_dv_x_dt(self, deriv_type=1)
 		"""calculate derivatives of trace, 1st derivative if no input, if input 2 then calcluates 2nd derivative"""
 	#calculate x derivative of trace
 		stf.set_trace(self.sweep_number)
-		if len(argv)<1:
+		if deriv_type == 1:
 			dv_dt_out = dv_dt_V.get_dv_dt_as_numpy(self.voltage_trace, stf.get_sampling_interval())
+		## can actually just make this one loop
 		else:
 			input = self.voltage_trace
 			count = 0
-			while count <= len(argv):
+			while count <= deriv_type:
 				dv_dt_out = dv_dt_V.get_dv_dt_as_numpy(input, stf.get_sampling_interval())
 				input = dv_dt_out
 				count += 1
@@ -64,6 +66,7 @@ class excitability_trace(object):
 		return(True)
 	
 	def plot_derivative(self, *argv):
+		"""1st derivative if no input, if input 2 then calcluates 2nd derivative"""
 		to_plot = self.calc_dv_x_dt(self, *argv)
 		stf.new_window(to_plot)
 		return(True)
