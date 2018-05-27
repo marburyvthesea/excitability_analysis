@@ -12,12 +12,19 @@ import pandas as pd
 import xlsxwriter
 import stf
 import spells
+#import excitability_analysis
+
 
 class excitability_file(object):
 	##compile file with excitability traces
 	def __init__(self):
 		self.size_channel = stf.get_size_channel()
 		self.name = stf.get_filename()
+	
+	#compile APs from indiv traces by calling
+	def excitability_analysis.find_AP_peaks(start_msec, delta_msec, current_start, current_delta, threshold_value, deflection_direction, mark_option):
+		return()
+	
 	# make this do a dv_dt_by_V	
 	def compile_sweeps(self):
 		sweeps_dict = {}
@@ -33,6 +40,11 @@ class excitability_file(object):
 		dict_df.to_excel(str(self.name)+'.xlsx')
 
 		return()
+		
+	def calc_R_input(current_start_input, current_delta_input, *argv):
+		"""Calculate input resistance by measuring hyperpolarizing traces"""
+		df_out = calc_R_input(current_start_input, current_delta_input, *argv)
+		return(df_out)	
 
 
 class excitability_trace(object):
@@ -89,8 +101,13 @@ class excitability_trace(object):
 		##{'SSE': 0.8533321749496918, 'Tau_0': 1.1497377662822952, 'Amp_0': 904.9731610575948, 'Offset': -275.5736999511719}
 		V_amplitude = fit_dict['Amp_0']
 		return(V_amplitude)
-		
+
+##		
 	
+def load_files_from_list(list_of_excitability_files):
+	return()	
+
+##	
 def compile_file():
 	"""ideally run this function and then be able to select options for indiv traces by entering names in shell"""
 	file_dict = {}
