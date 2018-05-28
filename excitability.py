@@ -19,10 +19,11 @@ class excitability_file(object):
 	##compile file with excitability traces
 	def __init__(self):
 		self.size_channel = stf.get_size_channel()
-		self.name = stf.get_filename()
+		self.name = stf.get_filename()[-12:]
+		self.full_path = stf.get_filename()
 	
 	#compile APs from indiv traces by calling
-	def excitability_analysis.find_AP_peaks(start_msec, delta_msec, current_start, current_delta, threshold_value, deflection_direction, mark_option):
+	def find_AP_peaks(start_msec, delta_msec, current_start, current_delta, threshold_value, deflection_direction, mark_option):
 		return()
 	
 	# make this do a dv_dt_by_V	
@@ -102,10 +103,14 @@ class excitability_trace(object):
 		V_amplitude = fit_dict['Amp_0']
 		return(V_amplitude)
 
-##		
+##	batch load files from list and convert to excitability file objects	
 	
 def load_files_from_list(list_of_excitability_files):
-	return()	
+	output_dict = {}
+	for item in list_of_excitability_files:
+		stf.file_open(str(item))
+		output_dict[str(item)[-12:]] = excitability_file()
+	return(output_dict)	
 
 ##	
 def compile_file():
