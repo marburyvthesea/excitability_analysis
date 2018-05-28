@@ -227,35 +227,38 @@ def find_ADP_thresholds_trace(*argv):
 	
 	return(trace_count, df_out)	
 	
-def calc_R_input(current_start, current_delta, *argv):
+def calc_R_input(current_start, current_delta, hyperpolarizing_sweeps=[0], measured_amp_start=int(stf.get_peak_start()), measured_amp_end=int(stf.get_peak_end()),
+					baseline_start=int(stf.get_base_start()), baseline_end=int(stf.get_base_end())):
 	"""inputs: 
 	current_start = value of 1st current injection
 	current_delta
-	list of hyperpolarizing traces, starting with 0
+	list of hyperpolarizing sweeps, starting with 0 (default is a list containing just 1st sweep)
 	e.g. -150, 50, 0, 1, 2, 3 will calculate the input resistance for the 1st four traces, assuming 1st injection was -150pA 
-	and it went up by 50pA each sweep"""
+	and it went up by 50pA each sweep
+	enter values for region to measure amplitdue of votlage response and baseline, or use stimfit cursors (default will use cursor values) """
 	hyperpolarizing_sweeps = {}
 	fit_voltage_amplitudes = []
 	measured_voltage_amplitudes = []
-	sweeps = [sweep for sweep in argv]
-	injected_current = [(current_start+(current_delta*x)) for x in range(len(argv))]
-	for sweep in argv:
-		hyperpolarizing_sweeps[sweep] = excitability_trace(stf.get_trace(sweep), sweep)
+	injected_current = [(current_start+(current_delta*x)) for x in range(len(hyperpolarizing_sweeps))]
+	for sweep in hyperpolarizing_sweeps:
+		hyperpolarizing_sweeps[sweep] = excitability_trace(stf.get_trace(int(sweep)), sweep)
 		fit_voltage_amplitudes.append(hyperpolarizing_sweeps[sweep].fit_mono_exponential())
 		stf.set_trace(sweep)
-		measured_voltage_amplitudes.append(np.mean(stf.get_trace()[stf.get_peak_start():stf.get_peak_end()])-stf.get_base())
+		stf.set_base_start(baseline_start)
+		stf.set_base_end(baseline_end)
+		measured_voltage_amplitudes.append(np.mean(stf.get_trace()[measured_amp_start:measured_amp_end])-int(stf.get_base()))
 	
 	##calculations for Rinput from fit amplitudes and measured hyperpolarizations
 	# V = IR, R = V/I 
 	R_input_fit = [abs(V/I) for V, I in zip(fit_voltage_amplitudes, injected_current)]
 	R_input_measured = [abs(V/I) for V, I in zip(measured_voltage_amplitudes, injected_current)]
 		
-	to_output = np.array([sweeps, fit_voltage_amplitudes, measured_voltage_amplitudes, injected_current, R_input_fit, R_input_measured])
+	to_output = np.array([hyperpolarizing_sweeps, fit_voltage_amplitudes, measured_voltage_amplitudes, injected_current, R_input_fit, R_input_measured])
 	
-	df_to_output = pd.DataFrame(np.transpose(to_output), columns = ['sweeps', 'SS amplitude (mV) fit', 'SS amplitude (mV) measured', 'injected current', 'Rinput from fit', 'Rinput from measured values'])
-	output_path = stf.get_filename()[:-4] + 'Rinput.xlsx'
-	df_to_output.to_excel(output_path, sheet_name='Rinput')	
-	return(True)
+	#df_to_output = pd.DataFrame(np.transpose(to_output), columns = ['sweeps', 'SS amplitude (mV) fit', 'SS amplitude (mV) measured', 'injected current', 'Rinput from fit', 'Rinput from measured values'])
+	#output_path = stf.get_filename()[:-4] + 'Rinput.xlsx'
+	#df_to_output.to_excel(output_path, sheet_name='Rinput')	
+	return(to_output)
 	
 
 	
