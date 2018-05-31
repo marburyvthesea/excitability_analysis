@@ -26,13 +26,13 @@ class excitability_file(object):
 	def find_AP_peaks(start_msec, delta_msec, current_start, current_delta, threshold_value, deflection_direction, mark_option):
 		return()
 	
-	# make this do a dv_dt_by_V	
-	def compile_sweeps(self):
+	# compile all sweeps to trace objects 
+	def compile_sweeps_to_trace_objects(self):
 		sweeps_dict = {}
 		for sweep in range(self.size_channel):
 			stf.set_trace(sweep)
 			trace = excitability_trace(stf.get_trace(), sweep)
-			sweeps_dict[sweep] = trace.calc_dv_x_dt()
+			sweeps_dict[sweep] = trace
 
 		return(sweeps_dict)
 
@@ -50,32 +50,41 @@ class excitability_file(object):
 
 class excitability_trace(object):
 	##class to for information for traces in excitability experiment
-	def __init__(self, voltage_trace, sweep_number):
-		self.voltage_trace = voltage_trace
-		self.sweep_number = sweep_number 
-		
-	def calc_dv_x_dt(self, deriv_type=1):
+	def __init__(self):
+		self.voltage_trace = stf.get_trace()
+		self.sweep_number = stf.get_trace_index()
+		self.file_name = stf.get_filename() 
+		self.si = stf.get_sampling_interval()
+
+	def calc_dv_x_dt(self, region_input, deriv_type_input):
 		###redo this function as calc_dv_x_dt(self, deriv_type=1)
-		"""calculate derivatives of trace, 1st derivative if no input, if input 2 then calcluates 2nd derivative"""
+		"""calculate derivatives of trace, 
+			default is to calculate from start of trace to position of baseline end cursor
+			default is 1st derivative if no input, if input 2 then calcluates 2nd derivative"""
 	#calculate x derivative of trace
 		stf.set_trace(self.sweep_number)
-		if deriv_type == 1:
-			dv_dt_out = dv_dt_V.get_dv_dt_as_numpy(self.voltage_trace, stf.get_sampling_interval())
+		if deriv_type_input == 1:
+			V_values, dv_dt_out = dv_dt_V.get_dv_dt_as_numpy(self.voltage_trace, self.si, region_input)
 		## can actually just make this one loop
 		else:
 			input = self.voltage_trace
 			count = 0
 			while count <= deriv_type:
-				dv_dt_out = dv_dt_V.get_dv_dt_as_numpy(input, stf.get_sampling_interval())
+				V_values, dv_dt_out = dv_dt_V.get_dv_dt_as_numpy(input, self.si, region_input)
 				input = dv_dt_out
 				count += 1
-		return(dv_dt_out)
+		return(V_values, dv_dt_out)
 	##add a get dv_dt_as_numpy here
 
-	def plot_dv_dt_by_V(self):
-		dv_dt_for_plot = self.calc_dv_x_dt()
-		V_values =  stf.get_trace(self.sweep_number)[:-1]
+	def plot_dv_dt_by_V(self, region=(0,stf.get_base_end()), deriv_type=1):
+		V_values, dv_dt_for_plot = self.calc_dv_x_dt(region, deriv_type)
 		dv_dt_V.plot_dv_dt(V_values, dv_dt_for_plot)
+		return(True)
+	
+	def save_dv_dt_trace(self, region=(0,stf.get_base_end()), deriv_type=1):
+		V_values, dv_dt_ = self.calc_dv_x_dt(region_input, deriv_type_input)
+		sweep_dv_dt_by_V = pd.DataFrame({'Voltage(mV)':V_values[:-1], 'dv_dt':dv_dt_})
+		sweep_dv_dt_by_V.to_excel(str(self.file_name)+'sweep_'+str(self.sweep_number)+'_dv_dt_V.xlsx')
 		return(True)
 	
 	def plot_derivative(self, *argv):
