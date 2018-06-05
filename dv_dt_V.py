@@ -17,8 +17,8 @@ def get_dv_dt(slice_indicies=(0,0)):
     #determine if using whole trace or slice
     
     if slice_indicies != 0:
-		sample_start = slice_indicies[0]
-		sample_end = slice_indicies[1]
+    	sample_start = slice_indicies[0]
+    	sample_end = slice_indicies[1]
     	
     else:
     	sample_start = 0

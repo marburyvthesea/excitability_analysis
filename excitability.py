@@ -2,7 +2,7 @@ import sys
 sys.path.append('/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/')
 sys.path.append('/Library/Python/2.7/site-packages/')
 sys.path.append('/Users/johnmarshall/miniconda3/envs/py27/lib/python2.7/site-packages')
-sys.path.append('/Applications/MacPorts/dv_dt_V_analysis/')
+sys.path.append('/Applications/MacPorts/excitability_analysis/')
 sys.path.append('/Applications/MacPorts/stimfit.app/Contents/Frameworks/stimfit/')
 import stf
 import excitability_subfunctions as es
@@ -74,8 +74,31 @@ class excitability_trace(object):
 				input = dv_dt_out
 				count += 1
 		return(V_values, dv_dt_out)
-	##add a get dv_dt_as_numpy here
+		
+	def dv_dt_cut_align_to_AP_peak(self, search_start, search_end, before_region=2000, after_region=1000):
+		"""slices trace by a set number of samples in front of and behind AP
+		
+		"""
+		AP_region = self.voltage_trace[int(search_start):int(search_end)]
+		index_of_peak = np.argmax(AP_region)+search_start
+		AP_region_aligned = stf.get_trace()[int(index_of_peak-before_region):int(index_of_peak+after_region)]
 
+		return(AP_region_aligned)
+		
+	def plot_dv_dt_by_V_input(self, AP_region_aligned):
+		V_values, dv_dt_out = dv_dt_V.get_dv_dt_as_numpy(AP_region_aligned, self.si)
+		dv_dt_V.plot_dv_dt(V_values, dv_dt_out)
+		return(V_values, dv_dt_out)
+	
+	def plot_save_aligned_dv_dt(self, search_start=stf.get_peak_start(), search_end=stf.get_peak_end()):
+		AP_region_aligned = self.dv_dt_cut_align_to_AP_peak(search_start, search_end)
+		V_values, dv_dt_out = dv_dt_V.get_dv_dt_as_numpy(AP_region_aligned, self.si)
+		dv_dt_V.plot_dv_dt(V_values, dv_dt_out)
+		sweep_dv_dt_by_V = pd.DataFrame({'Voltage(mV)':V_values[:-1], 'dv_dt':dv_dt_out})
+		save_path = str(self.file_name)+'sweep_'+str(self.sweep_number)+'_dv_dt_V_aligned.xlsx'
+		sweep_dv_dt_by_V.to_excel(save_path)
+		return(save_path, V_values, dv_dt_out)
+		
 	def plot_dv_dt_by_V(self, region=(0,stf.get_base_end()), deriv_type=1):
 		V_values, dv_dt_for_plot = self.calc_dv_x_dt(region, deriv_type)
 		dv_dt_V.plot_dv_dt(V_values, dv_dt_for_plot)
